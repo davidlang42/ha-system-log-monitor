@@ -1,0 +1,46 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "System Log Monitor Settings",
+        "description": "Choose which log levels should trigger repair notifications.",
+        "data": {
+          "log_errors": "Monitor System Errors",
+          "log_warnings": "Monitor System Warnings"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "The integration is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure System Log Monitor",
+        "description": "Adjust active severity tracking or uncheck items below to remove them from your **Ignore List** ({count} currently ignored).",
+        "data": {
+          "log_errors": "Monitor System Errors",
+          "log_warnings": "Monitor System Warnings",
+          "ignored_issues": "Active Ignore List (Uncheck to remove)"
+        }
+      }
+    }
+  },
+  "issues": {
+    "log_issue": {
+      "title": "{title}",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "Log Notice: {domain}",
+            "description": "### Log Message Details:\n```text\n{message}\n```\n\n**Quick Links:**\n* [View System Logs]({logs_url})\n* [Open GitHub Issue Tracker]({github_url})\n\nSelect how you want to handle this reported issue:",
+            "data": {
+              "action_choice": "Action"
+            }
+          }
+        }
+      }
+    }
+  }
+}
