@@ -71,7 +71,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         fingerprint_hash = hashlib.md5(fingerprint.encode("utf-8")).hexdigest()
         issue_id = f"log_{fingerprint_hash}"
 
-        # Register repair issue with data kwarg included
+        # Delete existing issue if present so re-creating it resets the creation timestamp to 'now'
+        ir.async_delete_issue(hass, DOMAIN, issue_id)
+
+        # Register repair issue with updated details and timestamp
         ir.async_create_issue(
             hass,
             domain=DOMAIN,
@@ -90,7 +93,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "domain": domain,
                 "message": message,
                 "fingerprint": fingerprint,
-            }
+            },
         )
 
     entry.async_on_unload(
