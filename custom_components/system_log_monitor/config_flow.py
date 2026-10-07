@@ -49,17 +49,13 @@ class SystemLogMonitorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry):
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
         """Get the options flow handler."""
-        return SystemLogMonitorOptionsFlow(config_entry)
+        return SystemLogMonitorOptionsFlow()
 
 
 class SystemLogMonitorOptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for System Log Monitor."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
         """Manage options and configuration modifications including ignore list management."""
@@ -76,7 +72,6 @@ class SystemLogMonitorOptionsFlow(config_entries.OptionsFlow):
                 CONF_IGNORED_ISSUES: updated_ignored,
             }
 
-            # Return options properly instead of mutating entry data manually
             return self.async_create_entry(title="", data=new_options)
 
         ignore_schema = {}

@@ -34,10 +34,14 @@
         "step": {
           "init": {
             "title": "Log Notice: {domain}",
-            "description": "### Log Message Details:\n```text\n{message}\n```\n\n**Quick Links:**\n* [View System Logs]({logs_url})\n* [Open GitHub Issue Tracker]({github_url})\n\nSelect how you want to handle this reported issue:",
+            "description": "### Log Message Details:\n<pre style=\"white-space: pre-wrap; word-break: break-word;\">{message}</pre>\n\n**Quick Links:**\n* [View System Logs]({logs_url})\n\nSelect how you want to handle this reported issue:",
             "data": {
               "action_choice": "Action"
             }
+          },
+          "github": {
+            "title": "Report Issue to GitHub",
+            "description": "### Log Text to Copy:\n<pre style=\"white-space: pre-wrap; word-break: break-word;\">{message}</pre>\n\nClick the link below to open GitHub and paste the log details into a new issue:\n\n* [Open GitHub Issue Tracker]({github_url})\n\nClick **Submit** below once you are finished to dismiss and clear this repair issue."
           }
         }
       }
