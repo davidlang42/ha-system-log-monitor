@@ -40,8 +40,8 @@ class SystemLogMonitorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         schema = vol.Schema(
             {
-                vol.Required(CONF_LOG_ERRORS, default=DEFAULT_LOG_ERRORS): cv.boolean,
-                vol.Required(CONF_LOG_WARNINGS, default=DEFAULT_LOG_WARNINGS): cv.boolean,
+                vol.Required(CONF_LOG_ERRORS, default=DEFAULT_LOG_ERRORS): bool,
+                vol.Required(CONF_LOG_WARNINGS, default=DEFAULT_LOG_WARNINGS): bool,
             }
         )
 
@@ -67,23 +67,18 @@ class SystemLogMonitorOptionsFlow(config_entries.OptionsFlow):
         ignored_issues = current_options.get(CONF_IGNORED_ISSUES, [])
 
         if user_input is not None:
-            # Check which ignored issues were unselected (to be removed from ignore list)
             selected_ignored = user_input.get(CONF_IGNORED_ISSUES, [])
             updated_ignored = [item for item in ignored_issues if item in selected_ignored]
 
-            new_data = {
+            new_options = {
                 CONF_LOG_ERRORS: user_input.get(CONF_LOG_ERRORS, DEFAULT_LOG_ERRORS),
                 CONF_LOG_WARNINGS: user_input.get(CONF_LOG_WARNINGS, DEFAULT_LOG_WARNINGS),
                 CONF_IGNORED_ISSUES: updated_ignored,
             }
 
-            # Update entry options or data
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, data=new_data, options={}
-            )
-            return self.async_create_entry(title="", data={})
+            # Return options properly instead of mutating entry data manually
+            return self.async_create_entry(title="", data=new_options)
 
-        # Multi-select schema for active items to keep in ignore list, or uncheck to remove
         ignore_schema = {}
         if ignored_issues:
             ignore_schema[
@@ -98,11 +93,11 @@ class SystemLogMonitorOptionsFlow(config_entries.OptionsFlow):
                 vol.Required(
                     CONF_LOG_ERRORS,
                     default=current_options.get(CONF_LOG_ERRORS, DEFAULT_LOG_ERRORS),
-                ): cv.boolean,
+                ): bool,
                 vol.Required(
                     CONF_LOG_WARNINGS,
                     default=current_options.get(CONF_LOG_WARNINGS, DEFAULT_LOG_WARNINGS),
-                ): cv.boolean,
+                ): bool,
                 **ignore_schema,
             }
         )

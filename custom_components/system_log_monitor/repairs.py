@@ -8,11 +8,12 @@ import voluptuous as vol
 from homeassistant.components.repairs import RepairsFlow, RepairsFlowResult
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectOptionDict
 
 from .const import CONF_IGNORED_ISSUES, DOMAIN
 
 
-async class SystemLogRepairFlow(RepairsFlow):
+class SystemLogRepairFlow(RepairsFlow):
     """Handler for system log issue fixing flow."""
 
     async def async_step_init(
@@ -26,7 +27,6 @@ async class SystemLogRepairFlow(RepairsFlow):
         domain = data.get("domain", "unknown")
         fingerprint = data.get("fingerprint", "")
 
-        # External URL formatting links
         logs_url = "/config/logs"
         github_issues_url = "https://github.com/issues/new"
 
@@ -34,42 +34,40 @@ async class SystemLogRepairFlow(RepairsFlow):
             action = user_input.get("action_choice")
 
             if action == "github":
-                return self.async_abort(
-                    reason="redirect_github",
-                    next_flow=None,
-                )
+                # Advance to a dedicated step so the UI doesn't close before the user clicks the link
+                return await self.async_step_github()
             
             if action == "fixed":
-                # Dismiss repair issue permanently until it reappears
                 ir.async_delete_issue(self.hass, DOMAIN, self.issue_id)
                 return self.async_create_entry(title="", data={})
 
             if action == "ignore":
-                # Add fingerprint to ignore list across config entries
                 for entry_id, conf in self.hass.data.get(DOMAIN, {}).items():
-                    ignored = list(conf.get(CONF_IGNORED_ISSUES, []))
-                    if fingerprint and fingerprint not in ignored:
-                        ignored.append(fingerprint)
-                        conf[CONF_IGNORED_ISSUES] = ignored
+                    entry = self.hass.config_entries.async_get_entry(entry_id)
+                    if entry:
+                        current_options = dict(entry.options)
+                        if not current_options:
+                            current_options = dict(entry.data)
                         
-                        # Save entry update persistently
-                        entry = self.hass.config_entries.async_get_entry(entry_id)
-                        if entry:
-                            new_data = {**entry.data, CONF_IGNORED_ISSUES: ignored}
-                            self.hass.config_entries.async_update_entry(entry, data=new_data)
+                        ignored = list(current_options.get(CONF_IGNORED_ISSUES, []))
+                        if fingerprint and fingerprint not in ignored:
+                            ignored.append(fingerprint)
+                            current_options[CONF_IGNORED_ISSUES] = ignored
+                            self.hass.config_entries.async_update_entry(entry, options=current_options)
 
-                # Delete current issue instance
                 ir.async_delete_issue(self.hass, DOMAIN, self.issue_id)
                 return self.async_create_entry(title="", data={})
 
         schema = vol.Schema(
             {
-                vol.Required("action_choice"): vol.In(
-                    {
-                        "github": "Report as github issue",
-                        "fixed": "I've fixed this, tell me if it happens again",
-                        "ignore": "Ignore this log message",
-                    }
+                vol.Required("action_choice"): SelectSelector(
+                    SelectSelectorConfig(
+                        options=[
+                            SelectOptionDict(value="github", label="Report as github issue"),
+                            SelectOptionDict(value="fixed", label="I've fixed this, tell me if it happens again"),
+                            SelectOptionDict(value="ignore", label="Ignore this log message"),
+                        ]
+                    )
                 )
             }
         )
@@ -85,8 +83,25 @@ async class SystemLogRepairFlow(RepairsFlow):
             },
         )
 
+    async def async_step_github(self, user_input: dict[str, Any] | None = None) -> RepairsFlowResult:
+        """Secondary step to hold the screen open with the GitHub link."""
+        if user_input is not None:
+            ir.async_delete_issue(self.hass, DOMAIN, self.issue_id)
+            return self.async_create_entry(title="", data={})
+        
+        issue_entry = ir.async_get(self.hass).issues.get((DOMAIN, self.issue_id))
+        data = issue_entry.data if issue_entry and issue_entry.data else {}
+        
+        return self.async_show_form(
+            step_id="github",
+            description_placeholders={
+                "message": data.get("message", "No log details available."),
+                "github_url": "https://github.com/issues/new",
+            },
+        )
 
-async class SystemLogRedirectRepairFlow(RepairsFlow):
+
+class SystemLogRedirectRepairFlow(RepairsFlow):
     """Fallback flow if required."""
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> RepairsFlowResult:
         return self.async_create_entry(title="", data={})

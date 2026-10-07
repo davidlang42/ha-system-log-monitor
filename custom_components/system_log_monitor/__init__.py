@@ -1,6 +1,7 @@
 """The System Log Monitor integration."""
 from __future__ import annotations
 
+import hashlib
 import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -31,7 +32,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
-    # Intercept system_log records via event bus listener
     @callback
     def async_handle_system_log(event):
         """Handle incoming system log events."""
@@ -57,22 +57,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         source = event.data.get("source", ["unknown"])
         domain = source[0] if isinstance(source, list) and source else "unknown"
 
-        # Unique fingerprint representation for de-duplication
         fingerprint = f"{domain}:{message[:100]}"
-
         if fingerprint in ignored_list:
             return
 
-        # Build helpful title
         first_line = message.splitlines()[0] if message else "Empty message"
         title_prefix = f"[{domain.upper()}]" if domain and domain != "unknown" else "[System]"
         title = f"{title_prefix} {first_line}"
         if len(title) > 90:
             title = title[:87] + "..."
 
-        issue_id = f"log_{abs(hash(fingerprint))}"
+        # Use MD5 for deterministic issue IDs across HA reboots
+        fingerprint_hash = hashlib.md5(fingerprint.encode("utf-8")).hexdigest()
+        issue_id = f"log_{fingerprint_hash}"
 
-        # Register repair issue
+        # Register repair issue with data kwarg included
         ir.async_create_issue(
             hass,
             domain=DOMAIN,
@@ -87,9 +86,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "message": message,
                 "fingerprint": fingerprint,
             },
+            data={
+                "domain": domain,
+                "message": message,
+                "fingerprint": fingerprint,
+            }
         )
 
-    # Listen to system_log events emitted natively by Home Assistant core
     entry.async_on_unload(
         hass.bus.async_listen("system_log_event", async_handle_system_log)
     )
